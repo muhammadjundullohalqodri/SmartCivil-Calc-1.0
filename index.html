@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartCivil Calc – Desain Balok Beton Bertulang (SNI 2847:2019)</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">SCC</span>
+      <div>
+        <h1>SmartCivil Calc</h1>
+        <p>Perencanaan Balok Beton Bertulang • SNI 2847:2019 &amp; SNI 2052:2017</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="btnTheme" type="button" class="btn btn-ghost">Mode Gelap</button>
+      <button id="btnPDF" type="button" class="btn btn-primary">Unduh PDF</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <!-- PANEL INPUT -->
+    <aside class="panel input-col">
+      <div class="panel-head">
+        <h2>Data Diketahui</h2>
+        <button id="btnReset" type="button" class="btn btn-sm btn-ghost">Reset</button>
+      </div>
+
+      <div class="group">
+        <h3>Bentang, Tumpuan &amp; Beban</h3>
+        <div class="form-grid">
+          <div class="field">
+            <label for="ln">Bentang Bersih L<sub>n</sub> (m)</label>
+            <input type="number" id="ln" step="0.1" placeholder="Contoh: 6.0" />
+          </div>
+          <div class="field">
+            <label for="support">Kondisi Tumpuan</label>
+            <select id="support">
+              <option value="" selected disabled>Pilih tumpuan</option>
+              <option value="fixed-fixed">Jepit - Jepit</option>
+              <option value="fixed-pinned">Jepit - Sendi</option>
+              <option value="pinned-pinned">Sendi - Sendi</option>
+              <option value="cantilever">Kantilever</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="qDL">Beban Mati Tambahan q<sub>DL</sub> (kN/m)</label>
+            <input type="number" id="qDL" step="0.5" placeholder="Contoh: 18.0" />
+          </div>
+          <div class="field">
+            <label for="qLL">Beban Hidup q<sub>LL</sub> (kN/m)</label>
+            <input type="number" id="qLL" step="0.5" placeholder="Contoh: 14.0" />
+          </div>
+          <div class="field full-span">
+            <label for="cc">Selimut Beton c<sub>c</sub> (mm)</label>
+            <input type="number" id="cc" step="5" placeholder="Contoh: 40" />
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Material &amp; Spesifikasi Tulangan</h3>
+        <div class="form-grid">
+          <div class="field">
+            <label for="fc">Mutu Beton f'<sub>c</sub> (MPa)</label>
+            <input type="number" id="fc" step="1" placeholder="Contoh: 25" />
+          </div>
+          <div class="field">
+            <label for="gammaC">Berat Beton &gamma;<sub>c</sub> (kN/m³)</label>
+            <input type="number" id="gammaC" step="0.5" placeholder="Contoh: 24" />
+          </div>
+          <div class="field">
+            <label for="fy">Mutu Baja Utama (SNI 2052)</label>
+            <select id="fy">
+              <option value="" selected disabled>Pilih mutu</option>
+              <option value="420">BjTS 420B (420 MPa)</option>
+              <option value="280">BjTP 280 (280 MPa)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="db">Diameter Utama (mm)</label>
+            <select id="db">
+              <option value="" selected disabled>Pilih Ø</option>
+              <option value="13">D13</option>
+              <option value="16">D16</option>
+              <option value="19">D19</option>
+              <option value="22">D22</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fyt">Mutu Baja Sengkang</label>
+            <select id="fyt">
+              <option value="" selected disabled>Pilih mutu</option>
+              <option value="280">BjTP 280 (280 MPa)</option>
+              <option value="420">BjTS 420B (420 MPa)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ds">Diameter Sengkang (mm)</label>
+            <select id="ds">
+              <option value="" selected disabled>Pilih Ø</option>
+              <option value="8">Ø8</option>
+              <option value="10">Ø10</option>
+              <option value="12">Ø12</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <button id="btnCalc" type="button" class="btn btn-primary full-w">Hitung</button>
+    </aside>
+
+    <!-- PANEL OUTPUT (TERSEMBUNYI SEBELUM DIHITUNG) -->
+    <section id="outputSection" class="output-col hidden">
+      <div id="statusBox" class="status-bar ok">
+        <strong id="statusTitle">MEMENUHI SNI 2847:2019</strong>
+        <span id="statusText">Dimensi penampang, tulangan lentur, dan geser memenuhi syarat.</span>
+      </div>
+
+      <!-- 1. ESTIMASI DIMENSI PENAMPANG -->
+      <div class="panel">
+        <h2>1. Estimasi Dimensi Penampang (SNI 2847:2019 Tabel 9.3.1.1)</h2>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <span>Tinggi Minimum (h<sub>min</sub>)</span>
+            <strong id="outHmin">-</strong>
+            <small id="outHminFormula">-</small>
+          </div>
+          <div class="kpi">
+            <span>Dimensi Balok Rencana (b &times; h)</span>
+            <strong id="outDim">-</strong>
+            <small>Proporsi penampang efektif</small>
+          </div>
+          <div class="kpi">
+            <span>Tinggi Efektif (d)</span>
+            <strong id="outEffD">-</strong>
+            <small>d = h - c<sub>c</sub> - d<sub>s</sub> - 0,5d<sub>b</sub></small>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. ANALISIS PEMBEBANAN & GAYA DALAM -->
+      <div class="panel">
+        <h2>2. Analisis Pembebanan &amp; Gaya Dalam Terfaktor</h2>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Parameter Beban &amp; Gaya Dalam</th>
+                <th>Rumus / Acuan SNI</th>
+                <th>Hasil</th>
+              </tr>
+            </thead>
+            <tbody id="loadForceBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. DESAIN TULANGAN LENTUR -->
+      <div class="panel">
+        <h2>3. Desain Tulangan Lentur (SNI 2847:2019 Bab 9)</h2>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Daerah Tumpuan (Momen Negatif)</th>
+                <th>Daerah Lapangan (Momen Positif)</th>
+              </tr>
+            </thead>
+            <tbody id="flexureTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 4. DESAIN TULANGAN GESER -->
+      <div class="panel">
+        <h2>4. Desain Tulangan Geser / Sengkang (SNI 2847:2019 Bab 22 &amp; Pasal 9.7.6.2.2)</h2>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Zona Tumpuan (Kritis &amp; Pengekangan)</th>
+                <th>Zona Lapangan (Tengah Bentang)</th>
+              </tr>
+            </thead>
+            <tbody id="shearTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 5. SKETSA PENULANGAN -->
+      <div class="panel">
+        <h2>5. Sketsa Detail Penulangan Otomatis</h2>
+        <div class="viz-2col">
+          <div class="svg-card">
+            <p class="svg-title">Potongan Melintang – Daerah Tumpuan</p>
+            <svg id="svgTumpuan" viewBox="0 0 290 265" width="100%" height="235"></svg>
+          </div>
+          <div class="svg-card">
+            <p class="svg-title">Potongan Melintang – Daerah Lapangan</p>
+            <svg id="svgLapangan" viewBox="0 0 290 265" width="100%" height="235"></svg>
+          </div>
+        </div>
+        <div class="svg-card mt-1">
+          <p class="svg-title">Potongan Memanjang Balok &amp; Zonasi Jarak Sengkang</p>
+          <svg id="svgLongitudinal" viewBox="0 0 780 230" width="100%" height="215"></svg>
+        </div>
+      </div>
+
+      <!-- DIAGRAM GAYA DALAM -->
+      <div class="panel">
+        <h2>Diagram Gaya Geser (SFD) &amp; Momen Lentur (BMD)</h2>
+        <div class="viz-2col">
+          <div class="chart-box"><canvas id="chartSFD"></canvas></div>
+          <div class="chart-box"><canvas id="chartBMD"></canvas></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    SmartCivil Calc • Acuan SNI 2847:2019 &amp; SNI 2052:2017. Hasil tetap perlu diperiksa oleh tenaga ahli struktur.
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
